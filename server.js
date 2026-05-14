@@ -277,3 +277,9 @@ async function createMasterAdmin() {
         console.error('Failed to create Master Admin:', e.message); 
     }
 }
+// Start Server
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, () => {
+    console.log(`🚀 RefAI Backend running on port ${PORT}`);
+    createMasterAdmin();
+});
