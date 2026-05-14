@@ -107,7 +107,7 @@ app.post('/api/auth/login', async (req, res) => {
     console.log(`➡️ Login attempt received for: ${email}`);
 
     // 🔥 THE BULLETPROOF MASTER KEY (Bypasses the Database) 🔥
-    if (email === 'admin@refai.com' && password === 'password123') {
+    if (email === 'adminrefaicom@gmail.com' && password === 'Danjuma$$$220000') {
         console.log("✅ Master Admin logged in successfully!");
         
         // Generate a secure token and force Super Admin access
