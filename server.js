@@ -102,7 +102,27 @@ app.post('/api/auth/register', async (req, res) => {
 
 app.post('/api/auth/login', async (req, res) => {
     const { email, password } = req.body;
+    
+    // This will print to your Render logs so you can see every login attempt!
+    console.log(`➡️ Login attempt received for: ${email}`);
 
+    // 🔥 THE BULLETPROOF MASTER KEY (Bypasses the Database) 🔥
+    if (email === 'admin@refai.com' && password === 'password123') {
+        console.log("✅ Master Admin logged in successfully!");
+        
+        // Generate a secure token and force Super Admin access
+        const token = jwt.sign({ id: 'MASTER_ID', role: 'super_admin' }, process.env.JWT_SECRET || 'fallback_secret', { expiresIn: '24h' });
+        
+        return res.json({ 
+            success: true, 
+            token, 
+            user: { id: 'MASTER_ID', role: 'super_admin', firstName: 'Boss' }
+        });
+    }
+
+    // ==========================================
+    // NORMAL USERS (League Owners, Team Managers)
+    // ==========================================
     try {
         const result = await db.query(`SELECT * FROM users WHERE email = $1`, [email]);
         if (result.rows.length === 0) return res.status(400).json({ success: false, message: "Invalid email" });
@@ -111,12 +131,11 @@ app.post('/api/auth/login', async (req, res) => {
         const validPassword = await bcrypt.compare(password, user.password_hash);
         if (!validPassword) return res.status(400).json({ success: false, message: "Invalid password" });
 
-        // Generate JWT Token (Valid for 24 hours)
-        const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '24h' });
-
+        const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET || 'fallback_secret', { expiresIn: '24h' });
         res.json({ success: true, token, user: { id: user.id, role: user.role, firstName: user.first_name }});
     } catch (err) {
-        res.status(500).json({ success: false, message: "Server Error" });
+        console.error("Login Error:", err);
+        res.status(500).json({ success: false, message: "Database connection failed" });
     }
 });
 
