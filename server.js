@@ -253,18 +253,27 @@ io.on('connection', (socket) => {
 // ==========================================
 async function createMasterAdmin() {
     try {
-        const salt = await bcrypt.genSalt(10);
-        const hash = await bcrypt.hash(process.env.ADMIN_PASSWORD, salt);
-        // Inserts ONLY if the email doesn't exist yet
-        await db.query(`INSERT INTO users (first_name, last_name, email, password_hash, role) 
-                        VALUES ('Super', 'Admin', $1, $2, 'super_admin') ON CONFLICT (email) DO NOTHING`, 
-                        [process.env.ADMIN_EMAIL, hash]);
-        console.log('✅ Super Admin Secured');
-    } catch (e) { console.error('Failed to create Master Admin:', e.message); }
-}
+        const adminEmail = process.env.ADMIN_EMAIL;
+        const adminPass = process.env.ADMIN_PASSWORD;
 
-const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
-    console.log(`🚀 RefAI Backend running on port ${PORT}`);
-    createMasterAdmin();
-});
+        if (!adminEmail || !adminPass) {
+            console.log('⚠️ No ADMIN_EMAIL or ADMIN_PASSWORD found in Render Environment Variables.');
+            return;
+        }
+
+        const salt = await bcrypt.genSalt(10);
+        const hash = await bcrypt.hash(adminPass, salt);
+        
+        // FIXED: Now, if the account exists, it FORCES the password to update to your current Render password!
+        await db.query(`
+            INSERT INTO users (first_name, last_name, email, password_hash, role) 
+            VALUES ('Super', 'Admin', $1, $2, 'super_admin') 
+            ON CONFLICT (email) 
+            DO UPDATE SET password_hash = EXCLUDED.password_hash
+        `, [adminEmail, hash]);
+        
+        console.log(`✅ Super Admin Secured for: ${adminEmail}`);
+    } catch (e) { 
+        console.error('Failed to create Master Admin:', e.message); 
+    }
+}
