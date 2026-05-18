@@ -302,3 +302,47 @@ server.listen(PORT, () => {
     console.log(`🚀 RefAI Backend running on port ${PORT}`);
     createMasterAdmin();
 });
+
+// It uses uploadToS3.any() to catch any physical files uploaded from the Super Admin dashboard
+app.put('/api/admin/homepage-settings', verifyToken, requireRole('super_admin'), uploadToS3.any(), async (req, res) => {
+    try {
+        const { slideshowActive, slideInterval, tickerActive, tickerText, tickerColor } = req.body;
+        let mediaArray = [];
+
+        // Loop through the 5 possible slots
+        for(let i=1; i<=5; i++) {
+            const type = req.body[`type_${i}`];
+            let finalUrl = null;
+
+            // Did they send a URL link?
+            if (req.body[`url_${i}`]) {
+                finalUrl = req.body[`url_${i}`];
+            } 
+            // Did they upload a physical file?
+            else if (req.files) {
+                const uploadedFile = req.files.find(f => f.fieldname === `file_${i}`);
+                if (uploadedFile) {
+                    finalUrl = uploadedFile.location; // The public AWS S3 URL!
+                }
+            }
+
+            if (finalUrl) {
+                mediaArray.push({ type: type, url: finalUrl });
+            }
+        }
+
+        // Combine into one JSON object to save to the database
+        const finalSettings = {
+            ticker: { active: tickerActive === 'true', text: tickerText, color: tickerColor },
+            slideshow: { active: slideshowActive === 'true', interval: parseInt(slideInterval), media: mediaArray }
+        };
+
+        // Save this JSON object into your database (e.g., a table named 'platform_settings')
+        // await db.query(`UPDATE platform_settings SET config = $1 WHERE id = 1`, [JSON.stringify(finalSettings)]);
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error("Homepage settings error:", error);
+        res.status(500).json({ error: "Failed to save settings" });
+    }
+});
